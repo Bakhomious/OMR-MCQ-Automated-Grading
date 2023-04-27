@@ -1,14 +1,22 @@
+import operator
+
 import cv2 as cv
-import imutils
 import numpy as np
 from imutils.perspective import four_point_transform
 import csv
+import os
+import re
+import solution_extractor
 
+FOLDER_PATH = "images"
+
+# Constants for resizing
 HEIGHT = 500
 WIDTH = 300
+
+# Colors for contour drawing
 GREEN = (0, 255, 0)
 RED = (0, 0, 255)
-WHITE = (255, 255, 255)
 
 
 def preprocessing(image):
@@ -16,8 +24,6 @@ def preprocessing(image):
     gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
     blur = cv.GaussianBlur(gray, (5, 5), 0)
     edges = cv.Canny(blur, 10, 70)
-
-
 
     return image, edges
 
@@ -48,7 +54,7 @@ def sort_contours(cnts, method="left-to-right"):
     return cnts
 
 
-def get_cell(row, column, cnts_horizontal, cnts_vertical):
+def get_cell(document, row, column, cnts_horizontal, cnts_vertical):
     # Get the bounding rectangles of the specified horizontal and vertical contours
     h1_x, h1_y, h1_w, h1_h = cv.boundingRect(cnts_horizontal[row - 1])
     h2_x, h2_y, h2_w, h2_h = cv.boundingRect(cnts_horizontal[row])
@@ -67,9 +73,9 @@ def get_cell(row, column, cnts_horizontal, cnts_vertical):
     return cell
 
 
-def get_thresh(document):
+def get_thresh(document, lb=170):
     gray_doc = cv.cvtColor(document, cv.COLOR_BGR2GRAY)
-    thresh = cv.threshold(gray_doc, 170, 255, cv.THRESH_BINARY_INV)[1]
+    thresh = cv.threshold(gray_doc, lb, 255, cv.THRESH_BINARY_INV)[1]
     return thresh
 
 
@@ -88,7 +94,8 @@ def get_grid_contours(thresh):
 
     return cnts_horizontal, cnts_vertical
 
-    # Step 1: Add a function to read the answer key from a csv file
+
+# Read the answer key from a csv file
 def read_answer_key(file_path):
     answer_key = []
     with open(file_path, 'r') as csvfile:
@@ -97,59 +104,35 @@ def read_answer_key(file_path):
             answer_key.append(row)
     return answer_key
 
-    # Step 2: Add a function to check if a cross is present in the ROI
+
+# Check if a cross is present in the ROI
 def is_cross_present(roi, threshold=0.15):
     gray_roi = cv.cvtColor(roi, cv.COLOR_BGR2GRAY)
-    # cv.imwrite("gray_roi.png", gray_roi) # For debugging purposes
     _, thresh_roi = cv.threshold(gray_roi, 128, 255, cv.THRESH_BINARY_INV)
-    #cv.medianBlur(thresh_roi, 5, thresh_roi)
-    cv.dilate(thresh_roi, np.ones((5, 5), np.uint8), thresh_roi, iterations=1)
-
-    # cv.imwrite("thresh_roi.png", thresh_roi) # For debugging purposes
+    # cv.medianBlur(thresh_roi, 5, thresh_roi)
+    cv.dilate(thresh_roi, np.ones((20, 20), np.uint8), thresh_roi, iterations=1)
 
     white_pixels = np.sum(thresh_roi == 255)
     total_pixels = thresh_roi.size
-    print(white_pixels / total_pixels)
     if white_pixels / total_pixels > threshold:
         return True
     return False
 
 
-if __name__ == '__main__':
-    image_int = cv.imread("images/test_9.png")
-    image, edges = preprocessing(image_int)
-    contours = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)[0]
-
-    rect_cnts = get_rect_cnts(contours)
-    cv.imwrite("rect_cnts.png", cv.drawContours(image.copy(), rect_cnts, -1, (0, 255, 0), 3))
-    document = four_point_transform(image, rect_cnts[0].reshape(4, 2))
-    # document = cv.copyMakeBorder(document, 3, 3, 3, 3, cv.BORDER_CONSTANT, value=0)
-    cv.imwrite("document.png", document)
-    thresh = get_thresh(document)
-
-    horizontal_contours, vertical_contours = get_grid_contours(thresh)
-
-    #roi = get_cell(3, 3, horizontal_contours, vertical_contours)
-    #cv.imwrite("roi.png", roi)
-
-    answer_key = read_answer_key("answer_key_2.csv")
-
-    # Step 3: Iterate over the ROIs, skipping the first row and column, and compare the extracted answers with the answer key
+# Iterate over the ROIs, skipping the first row and column, and compare the extracted answers with the answer key
+def grade(document, answer_key, horizontal_contours, vertical_contours):
     correct_answers = 0
-    total_answers = 0
     empty_rows = 0
-    print(len(horizontal_contours), len(vertical_contours))
     wrong_answers = 0
     for row in range(2, len(horizontal_contours)):
         crosses_in_row = 0
         correct_answer_col = -1
         for col in range(2, len(vertical_contours)):
-            roi = get_cell(row, col, horizontal_contours, vertical_contours)
+            roi = get_cell(document, row, col, horizontal_contours, vertical_contours)
             if is_cross_present(roi):
                 crosses_in_row += 1
                 if answer_key[row - 2][col - 2] == "1":
                     correct_answer_col = col
-                total_answers += 1
 
         if crosses_in_row == 0:
             empty_rows += 1
@@ -158,15 +141,50 @@ if __name__ == '__main__':
         else:
             wrong_answers += 1
 
-    # roi = get_cell(4, 3, horizontal_contours, vertical_contours) # For debugging purposes
-    # cv.imwrite("roi.png", roi) # For debugging purposes
-    # print(is_cross_present(roi)) # For debugging purposes
+    return correct_answers, empty_rows, wrong_answers
 
-    Total_answers = len(horizontal_contours) - empty_rows - 2
-    print("Total Questions answered:", Total_answers)
-    print("Wrong answers:", wrong_answers)
-    print("Correct answers:", correct_answers)
-    print("Empty rows:", empty_rows)
-    #print("Accuracy:", correct_answers / total_answers * 100)
 
-    cv.waitKey()
+if __name__ == '__main__':
+    results_list = []
+    for filename in os.listdir(FOLDER_PATH):
+        if filename.endswith(".png") and not filename.startswith("test_solver"):
+            image_int = cv.imread(f'{FOLDER_PATH}\{filename}')
+            image, edges = preprocessing(image_int)
+            contours = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)[0]
+
+            rect_cnts = get_rect_cnts(contours)
+            document = four_point_transform(image, rect_cnts[0].reshape(4, 2))
+            thresh = get_thresh(document)
+
+            horizontal_contours, vertical_contours = get_grid_contours(thresh)
+
+            answer_key = solution_extractor.extract_and_read()
+            correct_answers, empty_rows, wrong_answers = grade(document, answer_key, horizontal_contours, vertical_contours)
+
+            total_questions_answered = len(horizontal_contours) - empty_rows - 2
+            total_questions = len(horizontal_contours) - 2
+            percentage = (correct_answers / total_questions) * 100
+
+            print("File Name:", filename)
+            print("Total Questions answered:", total_questions_answered)
+            print("Wrong answers:", wrong_answers)
+            print("Correct answers:", correct_answers)
+            print("Empty rows:", empty_rows)
+            print(f"Percentage: {percentage}%")
+
+            results_dict = {"Image ID": int(re.findall(r'\d+', filename)[0]),
+                            "Total Questions Answered": total_questions_answered,
+                            "Correct": correct_answers,
+                            "Wrong": wrong_answers,
+                            "Empty": empty_rows,
+                            "Percentage": percentage}
+            results_list.append(results_dict)
+            results_list.sort(key=operator.itemgetter("Image ID"))
+
+            with open("results.csv", mode="w", newline='') as csv_file:
+                fieldnames = ["Image ID", "Total Questions Answered", "Correct", "Wrong",
+                              "Empty", "Percentage"]
+                writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+                writer.writeheader()
+                for result in results_list:
+                    writer.writerow(result)
