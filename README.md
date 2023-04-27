@@ -2,11 +2,11 @@
 
 ## Technologies Used
 
-<table><tr><td valign="top" width="33%">
-<div align="center">  
+<div style="display: flex;
+  justify-content: center;">
 <a href="https://opencv.org/" target="_blank"><img style="margin: 10px" src="https://profilinator.rishav.dev/skills-assets/opencv-icon.svg" alt="OpenCV" height="50" /></a>  
-<a href="https://www.python.org/" target="_blank"><img style="margin: 10px" src="https://profilinator.rishav.dev/skills-assets/python-original.svg" alt="Python" height="50" /></a>  </div>
-</td></tr></table>
+<a href="https://www.python.org/" target="_blank"><img style="margin: 10px" src="https://profilinator.rishav.dev/skills-assets/python-original.svg" alt="Python" height="50" /></a>
+</div>
 
 ## Work Pipeline
 
