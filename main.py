@@ -272,6 +272,55 @@ def save_results(results_list, output_file="results.csv"):
             writer.writerow(result)
 
 
+def mark_answers(document, answer_key, horizontal_contours, vertical_contours, filename):
+    """
+    The `mark_answers` function is responsible for marking the correct and incorrect answers on the input exam document image and saving the marked image to disk.
+
+    Args:
+        document (numpy.ndarray): The transformed and preprocessed document image.
+        answer_key (list): The list of correct answers.
+        horizontal_contours (list): The list of horizontal grid contours.
+        vertical_contours (list): The list of vertical grid contours.
+        filename (str): The name of the input image file.
+
+    Returns:
+        None. However, the function saves the marked image to disk.
+    """
+    for row in range(2, len(horizontal_contours)):
+        correct_answer_col = -1
+        marked_answer_col = -1
+        multiple_crosses = False
+        marked_cols = []
+
+        for col in range(2, len(vertical_contours)):
+            roi = get_cell(document, row, col, horizontal_contours, vertical_contours)
+            if is_cross_present(roi):
+                marked_cols.append(col)
+                marked_answer_col = col
+                if answer_key[row - 2][col - 2] == "1":
+                    correct_answer_col = col
+
+        if len(marked_cols) > 1:
+            multiple_crosses = True
+
+        h1_x, h1_y, h1_w, h1_h = cv.boundingRect(horizontal_contours[row - 1])
+        h2_x, h2_y, h2_w, h2_h = cv.boundingRect(horizontal_contours[row])
+
+        if multiple_crosses:
+            color = BLUE
+            for marked_col in marked_cols:
+                v1_x, v1_y, v1_w, v1_h = cv.boundingRect(vertical_contours[marked_col - 1])
+                v2_x, v2_y, v2_w, v2_h = cv.boundingRect(vertical_contours[marked_col])
+                cv.rectangle(document, (v1_x, h1_y), (v2_x + v2_w, h2_y), color, 2)
+        elif marked_answer_col != -1:
+            color = GREEN if marked_answer_col == correct_answer_col else RED
+            v1_x, v1_y, v1_w, v1_h = cv.boundingRect(vertical_contours[marked_answer_col - 1])
+            v2_x, v2_y, v2_w, v2_h = cv.boundingRect(vertical_contours[marked_answer_col])
+            cv.rectangle(document, (v1_x, h1_y), (v2_x + v2_w, h2_y), color, 2)
+
+    os.makedirs("checked_images", exist_ok=True)
+    cv.imwrite(f"checked_images/{filename}", document)
+
 def main():
     results_list = []
 
@@ -302,6 +351,8 @@ def main():
                             "Percentage": percentage}
             results_list.append(results_dict)
             results_list.sort(key=operator.itemgetter("Image ID"))
+
+            mark_answers(document, answer_key, horizontal_contours, vertical_contours, filename)
 
     save_results(results_list)
 
