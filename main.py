@@ -324,6 +324,10 @@ def mark_answers(document, answer_key, horizontal_contours, vertical_contours, f
 def main():
     results_list = []
 
+    print("="*25)
+    print("Test Results:")
+    print("="*25)
+
     for filename in os.listdir(FOLDER_PATH):
         if filename.endswith(".png") and not filename.startswith("test_solver"):
             document, thresh = process_image(filename)
@@ -336,12 +340,13 @@ def main():
             total_questions = len(horizontal_contours) - 2
             percentage = (correct_answers / total_questions) * 100
 
-            print("File Name:", filename)
-            print("Total Questions answered:", total_questions_answered)
-            print("Wrong answers:", wrong_answers)
-            print("Correct answers:", correct_answers)
-            print("Empty rows:", empty_rows)
-            print(f"Percentage: {percentage}%")
+            print("="*25)
+            print(f"File Name: {filename}")
+            print(f"Total Questions Answered: {total_questions_answered}")
+            print(f"Correct Answers: {correct_answers}")
+            print(f"Wrong Answers: {wrong_answers}")
+            print(f"Empty Rows: {empty_rows}")
+            print(f"Percentage: {percentage:.1f}%")
 
             results_dict = {"Image ID": int(re.findall(r'\d+', filename)[0]),
                             "Total Questions Answered": total_questions_answered,
@@ -355,7 +360,6 @@ def main():
             mark_answers(document, answer_key, horizontal_contours, vertical_contours, filename)
 
     save_results(results_list)
-
 
 if __name__ == '__main__':
     main()

@@ -36,8 +36,6 @@ def extract_and_read():
     # Improve accuracy
     cv.drawContours(document, vertical_contours, -1, GREEN, 2)
 
-    print(len(horizontal_contours), len(horizontal_contours))
-
     answers = extract_answers(document, horizontal_contours, vertical_contours)
 
     with open("answer_key_test.csv", mode="w", newline='') as csv_file:
