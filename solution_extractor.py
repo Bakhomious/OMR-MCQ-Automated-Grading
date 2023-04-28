@@ -1,8 +1,10 @@
-import cv2 as cv
-import numpy as np
-from imutils.perspective import four_point_transform
 import csv
+
+import cv2 as cv
+from imutils.perspective import four_point_transform
+
 from main import *
+from constants import FOLDER_PATH, WIDTH, HEIGHT
 
 
 def extract_answers(document, horizontal_contours, vertical_contours):
@@ -22,10 +24,10 @@ def extract_answers(document, horizontal_contours, vertical_contours):
 def extract_and_read():
 
     image_int = cv.imread(f'{FOLDER_PATH}\\test_solver.png')
-    image, edges = preprocessing(image_int)
+    image, edges = preprocess_image(image_int, WIDTH, HEIGHT)
     contours = cv.findContours(edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)[0]
 
-    rect_cnts = get_rect_cnts(contours)
+    rect_cnts = get_rectangular_contours(contours)
     document = four_point_transform(image, rect_cnts[0].reshape(4, 2))
     thresh = get_thresh(document, 125)
 
