@@ -137,7 +137,7 @@ size: 4:3
 
 ---
 ## Workflow
-### 2. Grid extraction
+### 2. Cell extraction from the Grid
 
 - Looping through contours and calculating the bounding rectangle
 - Creating the grid using horizontal and vertical contours
@@ -154,7 +154,7 @@ size: 4:3
 ---
 ## Workflow
 ### 3. Answer marking
-- Cross detection using contour area and aspect ratio
+- Cross detection using threshold and ratio of white to black pixels
 - Coloring cells based on answer correctness
   - Green: Correct
   - Red: Incorrect
